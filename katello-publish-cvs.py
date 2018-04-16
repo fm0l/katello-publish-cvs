@@ -27,6 +27,7 @@ ENVIRONMENTS = {}
 # Search string to list currently running publish tasks
 publish_tasks = "foreman_tasks/api/tasks?search=utf8=%E2%9C%93&search=label+%3D+Actions%3A%3AKatello%3A%3AContentView%3A%3APublish+and+state+%3D+running"
 sync_tasks = "foreman_tasks/api/tasks?utf8=%E2%9C%93&per_page=1000&search=label+%3D+Actions%3A%3AKatello%3A%3ARepository%3A%3ASync+and+state+%3D+stopped+and+result+%3D+success"
+promotion_tasks = "foreman_tasks/api/tasks?search=utf8=%E2%9C%93&search=label+%3D+Actions%3A%3AKatello%3A%3AContentView%3A%3APromote+and+state+%3D+running"
 
 def get_json(location):
     """
@@ -77,6 +78,24 @@ def wait_for_publish(seconds):
     time.sleep(2) 
     
     while get_json(URL + publish_tasks)["total"] != 0:
+        time.sleep(seconds)
+        count += 1
+
+    print "Finished waiting after " + str(seconds * count) + " seconds"
+
+def wait_for_promotion(seconds):
+    """
+    Wait for all publishing tasks to terminate. Search string is:
+    label = Actions::Katello::ContentView::Promote and state = running
+    """
+
+    count = 0
+    print "Waiting for publish tasks to finish..."
+
+    # Make sure that publish tasks gets the chance to appear before looking for them
+    time.sleep(2)
+
+    while get_json(URL + promotion_tasks)["total"] != 0:
         time.sleep(seconds)
         count += 1
 
@@ -166,7 +185,11 @@ def main():
     print "Promote all effected CCVs to TEST environment"
     for ccv_id in ccv_ids_to_promote:
         post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["TEST"]})) 
+        
+    wait_for_promotion(10)
 
+    for ccv_id in ccv_ids_to_promote:
+        post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["PROD"]}))
 
 if __name__ == "__main__":
     main()
