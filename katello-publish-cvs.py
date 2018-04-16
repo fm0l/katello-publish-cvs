@@ -21,7 +21,7 @@ PASSWORD = "changeme"
 # Ignore SSL for now
 SSL_VERIFY = False
 # Name of the organization to be either created or used
-ORG_NAME = "Default Organization"
+ORG_NAME = "Sorint"
 # Dictionary for Life Cycle Environments ID and name
 ENVIRONMENTS = {}
 # Search string to list currently running publish tasks
@@ -147,14 +147,13 @@ def main():
                         need_publish = True
 
         if need_publish:
+    	    wait_for_publish(2)
+    	    wait_for_promotion(2)
             print "Publish " + cv["name"] + " because some of its content has changed"
             post_json(KATELLO_API + "content_views/" + str(cv["id"]) + "/publish", json.dumps({"description": "Automatic publish over API"}))
             published_cv_ids.append(cv["id"])
         else:
             print cv["name"] + " doesn't need to be published"
-
-    wait_for_publish(10)
-    wait_for_promotion(2)
 
     # Get all CCVs from the API 
     ccvs_json = get_json(SAT_API + "organizations/" + str(org_id) + "/content_views?composite=true")
@@ -172,26 +171,29 @@ def main():
                     new_component_ids.append(version["id"])
         
         print "Update " + ccv["name"] + " with new compontent IDs: " + str(new_component_ids)
+        wait_for_publish(2)
+    	wait_for_promotion(2)
         put_json(KATELLO_API + "content_views/" + str(ccv["id"]), json.dumps({"component_ids": new_component_ids}))
         
         print "Publish new version of " + ccv["name"]
+        wait_for_publish(2)
+    	wait_for_promotion(2)
         post_json(KATELLO_API + "content_views/" + str(ccv["id"]) + "/publish", json.dumps({"description": "Automatic publish over API"}))
 
         # Get the ID of the version in Library 
         version_in_library_id = get_json(KATELLO_API + "content_views/" + str(ccv["id"]) + "/content_view_versions?environment_id=" + str(ENVIRONMENTS["Library"]))["results"][0]["id"]
         ccv_ids_to_promote.append(str(version_in_library_id))
 
-    wait_for_publish(2)
-    wait_for_promotion(2)
     
     print "Promote all effected CCVs to TEST environment"
     for ccv_id in ccv_ids_to_promote:
+        wait_for_publish(2)
+    	wait_for_promotion(2)
         post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["TEST"]})) 
-        
-    wait_for_publish(2)
-    wait_for_promotion(2)
-
+       
     for ccv_id in ccv_ids_to_promote:
+        wait_for_publish(2)
+    	wait_for_promotion(2)
         post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["PROD"]}))
 
 if __name__ == "__main__":
