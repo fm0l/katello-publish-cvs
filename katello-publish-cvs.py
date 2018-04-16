@@ -154,6 +154,7 @@ def main():
             print cv["name"] + " doesn't need to be published"
 
     wait_for_publish(10)
+    wait_for_promotion(2)
 
     # Get all CCVs from the API 
     ccvs_json = get_json(SAT_API + "organizations/" + str(org_id) + "/content_views?composite=true")
@@ -180,13 +181,15 @@ def main():
         version_in_library_id = get_json(KATELLO_API + "content_views/" + str(ccv["id"]) + "/content_view_versions?environment_id=" + str(ENVIRONMENTS["Library"]))["results"][0]["id"]
         ccv_ids_to_promote.append(str(version_in_library_id))
 
-    wait_for_publish(10)
+    wait_for_publish(2)
+    wait_for_promotion(2)
     
     print "Promote all effected CCVs to TEST environment"
     for ccv_id in ccv_ids_to_promote:
         post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["TEST"]})) 
         
-    wait_for_promotion(10)
+    wait_for_publish(2)
+    wait_for_promotion(2)
 
     for ccv_id in ccv_ids_to_promote:
         post_json(KATELLO_API + "content_view_versions/" + str(ccv_id) + "/promote", json.dumps({"environment_id": ENVIRONMENTS["PROD"]}))
